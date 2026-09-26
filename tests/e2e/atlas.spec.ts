@@ -1,6 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
 import { MISSILES } from '../../src/data/reference/missiles';
-import { COUNTRIES } from '../../src/sim/world';
 
 const isMobile = (page: Page) => (page.viewportSize()?.width ?? 1440) < 900;
 
@@ -90,96 +89,6 @@ test.describe('Сравнение и источники', () => {
     await page.getByRole('button', { name: /знач\./ }).first().click();
     await openAside(page);
     await expect(page.getByRole('complementary').getByText('ноябрь 2017 г.')).toBeVisible();
-  });
-});
-
-test.describe('Учебная симуляция', () => {
-  test('подпись всегда видна, запуск, пауза, шаг, сброс', async ({ page }) => {
-    await page.goto('/#/simulation');
-    await expect(page.getByText('Условная учебная модель. Не прогноз реальных боевых действий.')).toBeVisible();
-    const clock = page.locator('.clock');
-    await expect(clock).toContainText('T+000');
-    await page.getByRole('button', { name: 'Шаг' }).click();
-    await expect(clock).toContainText('T+001');
-    await page.getByRole('button', { name: '4×' }).click();
-    await page.getByRole('button', { name: /Запуск|Продолжить/ }).click();
-    await page.waitForTimeout(800);
-    await page.getByRole('button', { name: 'Пауза' }).click();
-    const t1 = await clock.textContent();
-    await page.waitForTimeout(400);
-    expect(await clock.textContent()).toBe(t1);
-    expect(t1).not.toContain('T+001 ');
-    await page.getByRole('button', { name: 'Сброс' }).click();
-    await expect(clock).toContainText('T+000');
-    await expect(page.getByText('Условная учебная модель. Не прогноз реальных боевых действий.')).toBeVisible();
-  });
-
-  test('повтор сценария даёт тот же отпечаток и тот же журнал', async ({ page }) => {
-    await page.goto('/#/simulation');
-    await page.getByLabel('Учебный сценарий').selectOption('saturation');
-    const scrub = page.getByLabel('Шкала времени (такты)');
-    const max = await scrub.getAttribute('max');
-    await scrub.fill(max!);
-    const log1 = await page.locator('.log-entry').allTextContents();
-    const fp1 = await page.locator('.fp .mono').first().textContent();
-    await page.getByRole('button', { name: 'Повтор сценария' }).click();
-    await expect(page.getByText('Повторный прогон дал тот же отпечаток')).toBeVisible();
-    await page.getByRole('button', { name: 'Пауза' }).click();
-    await scrub.fill(max!);
-    expect(await page.locator('.log-entry').allTextContents()).toEqual(log1);
-    expect(await page.locator('.fp .mono').first().textContent()).toBe(fp1);
-  });
-
-  test('другое зерно — другой ход, возврат зерна — прежний', async ({ page }) => {
-    await page.goto('/#/simulation');
-    await page.getByLabel('Учебный сценарий').selectOption('saturation');
-    const fp = () => page.locator('.fp .mono').first().textContent();
-    const original = await fp();
-    await page.getByLabel('Зерно генератора').fill('42');
-    await page.getByRole('button', { name: 'Применить' }).click();
-    expect(await fp()).not.toBe(original);
-    await page.getByRole('button', { name: 'Исходное' }).click();
-    expect(await fp()).toBe(original);
-  });
-
-  test('клавиатура: пробел запускает и останавливает, R сбрасывает', async ({ page }) => {
-    test.skip(isMobile(page), 'клавиатурные сокращения проверяются на компьютере');
-    await page.goto('/#/simulation');
-    await page.locator('h1').click();
-    await page.keyboard.press('ArrowRight');
-    await expect(page.locator('.clock')).toContainText('T+001');
-    await page.keyboard.press('Space');
-    await expect(page.getByRole('button', { name: 'Пауза' })).toBeVisible();
-    await page.keyboard.press('Space');
-    await expect(page.getByRole('button', { name: 'Продолжить' })).toBeVisible();
-    await page.keyboard.press('r');
-    await expect(page.locator('.clock')).toContainText('T+000');
-  });
-
-  test('правило в журнале объясняет событие; отношения меняют правило', async ({ page }) => {
-    await page.goto('/#/simulation');
-    await page.getByLabel('Учебный сценарий').selectOption('alliance');
-    const scrub = page.getByLabel('Шкала времени (такты)');
-    await scrub.fill((await scrub.getAttribute('max'))!);
-    await expect(page.locator('.log').getByText('передача данных союзнику')).toBeVisible();
-    await page.locator('.log .rule-chip', { hasText: 'П-2' }).first().click();
-    await expect(page.getByRole('complementary').getByText('Союз без совместной обороны')).toBeVisible();
-    await page.getByRole('complementary').getByRole('tab', { name: 'Отношения' }).click();
-    const row = page.locator('.rel-row').filter({ hasText: 'Аврелия' }).filter({ hasText: 'Борея' });
-    await row.getByLabel('Совместная оборона').check();
-    await expect(page.getByText('Настройки отношений изменены')).toBeVisible();
-    await page.keyboard.press('Escape');
-    await scrub.fill((await scrub.getAttribute('max'))!);
-    await expect(page.locator('.log').getByText('передача данных союзнику')).toHaveCount(0);
-  });
-
-  test('учебные данные не смешаны со справочными', async ({ page }) => {
-    await page.goto('/#/simulation');
-    const simText = await page.locator('#main').textContent();
-    for (const m of MISSILES) expect(simText).not.toContain(m.name);
-    await page.goto('/#/reference');
-    const refText = await page.locator('#main').textContent();
-    for (const c of COUNTRIES) expect(refText).not.toContain(c.name);
   });
 });
 

@@ -572,7 +572,7 @@ function DefenseAside() {
       </p>
       <div className="section-label">Хотите посмотреть этапы в движении?</div>
       <p className="small">
-        Раздел <a href="#/simulation">«Учебная симуляция»</a> показывает те же этапы на вымышленной карте с вымышленными
+        Раздел <a href="#/history?mode=edit&scn=demo:legacy-basics">«Мир и сценарии»</a> (режим редактора) показывает те же этапы на вымышленной карте с вымышленными
         параметрами.
       </p>
     </div>

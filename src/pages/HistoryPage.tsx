@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { EmptyState, Loading, Workspace, useAside } from '../components/Common';
 import { IconInfo, IconPause, IconPlay, IconSearch, IconWarn } from '../components/Icons';
 import { EntityCard, EventCard } from '../components/history/Cards';
@@ -13,6 +13,15 @@ import { SPEEDS, addCalendar, dayOf, fmtDay, isValidIso, isoOf } from '../histor
 import type { HistEvent } from '../history/types';
 import type { Route, RouteName } from '../lib/router';
 import { loadJSON, saveJSON } from '../lib/storage';
+import { ModeBar, type WorldMode } from '../components/scenario/ModeBar';
+import { ScenarioWorkspace } from '../components/scenario/ScenarioWorkspace';
+import { DEMOS, demoById } from '../scenario/demos';
+import { initEditor, isDirty, markSaved, type EditorState } from '../scenario/editor';
+import { newHistorical, newTestScene } from '../scenario/factory';
+import { REGIONS } from '../scenario/geo';
+import { parseScenario } from '../scenario/schema';
+import { deleteSlot, listSlots, loadSlot, readAutosave, saveSlot, type SlotMeta } from '../scenario/storage';
+import type { HistoryPolicy, Region, ScenarioDoc } from '../scenario/types';
 
 type Nav = (name: RouteName, params?: Record<string, string | undefined>, replace?: boolean) => void;
 
@@ -55,7 +64,7 @@ export default function HistoryPage({ route, navigate }: { route: Route; navigat
         <Loading label="Загрузка исторической карты и событий…" />
       </main>
     );
-  return <HistoryWorld engine={engine} route={route} navigate={navigate} />;
+  return <WorldModes engine={engine} route={route} navigate={navigate} />;
 }
 
 const DEFAULT_LAYERS: Layers = {
@@ -83,7 +92,7 @@ interface Bookmark {
   date: string;
 }
 
-function HistoryWorld({ engine, route, navigate }: { engine: HistoryEngine; route: Route; navigate: Nav }) {
+function HistoryWorld({ engine, route, navigate, top, onCreateBranch }: { engine: HistoryEngine; route: Route; navigate: Nav; top?: ReactNode; onCreateBranch?: (day: number) => void }) {
   const { setOpen } = useAside();
   const initialDay = useMemo(() => {
     const d = route.params.get('d');
@@ -227,6 +236,7 @@ function HistoryWorld({ engine, route, navigate }: { engine: HistoryEngine; rout
 
   const main = (
     <div className="hworld">
+      {top}
       <header className="htop panel" aria-label="Дата и управление временем">
         <div className="htop-date">
           <div className="eyebrow" style={{ marginBottom: 2 }}>
@@ -355,6 +365,11 @@ function HistoryWorld({ engine, route, navigate }: { engine: HistoryEngine; rout
             <button className="btn btn-sm" onClick={() => setWhyOpen(true)}>
               <IconInfo size={14} /> Почему карта выглядит так?
             </button>
+            {onCreateBranch && (
+              <button className="btn btn-sm btn-primary" onClick={() => onCreateBranch(day)} title="Создать ветку альтернативной истории от этой даты; историческая база не меняется">
+                ⎇ Создать ветку от этой даты
+              </button>
+            )}
           </div>
           <div className="visually-hidden" aria-live="polite">
             {announce}
@@ -517,4 +532,321 @@ function HistoryWorld({ engine, route, navigate }: { engine: HistoryEngine; rout
   );
 
   return <Workspace main={main} aside={aside} asideTitle={selectedEvent ? 'Событие' : 'Страна на выбранную дату'} />;
+}
+
+/* ————————————————————————————————————————————————————————————————
+   «Мир и сценарии»: три связанных состояния —
+   историческое воспроизведение, редактирование сценария, воспроизведение сценария.
+   Сценарий хранится здесь, поэтому переход к истории и обратно его не теряет.
+   ———————————————————————————————————————————————————————————————— */
+
+function WorldModes({ engine, route, navigate }: { engine: HistoryEngine; route: Route; navigate: Nav }) {
+  const raw = route.params.get('mode');
+  const mode: WorldMode = raw === 'edit' || raw === 'play' ? raw : 'history';
+  const [editor, setEditor] = useState<EditorState | null>(null);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [library, setLibrary] = useState(false);
+  const [branchDay, setBranchDay] = useState<number | null>(null);
+  const [msg, setMsg] = useState('');
+  const [restore, setRestore] = useState(() => readAutosave());
+  const today = new Date().toISOString().slice(0, 10);
+
+  const toast = useCallback((s: string) => {
+    setMsg('');
+    setTimeout(() => setMsg(s), 10);
+  }, []);
+
+  /** Прежний сценарий не теряется: при переходе к другому он сохраняется в список. */
+  const storeCurrent = useCallback(() => {
+    if (editor && isDirty(editor)) saveSlot(editor.doc);
+  }, [editor]);
+
+  const openDoc = useCallback(
+    (doc: ScenarioDoc, reason: string, m: 'edit' | 'play' = 'edit') => {
+      storeCurrent();
+      setEditor(initEditor(doc, false));
+      setRestore(null);
+      toast(reason);
+      navigate('history', { mode: m, scn: doc.demo ? `demo:${doc.demo.id}` : undefined });
+    },
+    [storeCurrent, navigate, toast],
+  );
+
+  // Готовый сценарий по адресу: #/history?mode=edit&scn=demo:carrier
+  const scn = route.params.get('scn');
+  useEffect(() => {
+    if (!scn?.startsWith('demo:')) return;
+    const id = scn.slice(5);
+    if (editor?.doc.demo?.id === id) return;
+    const d = demoById(id);
+    if (d) {
+      storeCurrent();
+      setEditor(initEditor(d.make(today, engine.data.manifest.buildId), false));
+      setRestore(null);
+    }
+  }, [scn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Режим сценария без сценария — предложить выбор
+  useEffect(() => {
+    if (mode !== 'history' && !editor && !scn) setLibrary(true);
+  }, [mode, editor, scn]);
+
+  const setMode = (m: WorldMode) => {
+    if (m === 'history') navigate('history', { d: editor?.doc.episode.date });
+    else if (!editor) setLibrary(true);
+    else navigate('history', { mode: m, scn: editor.doc.demo ? `demo:${editor.doc.demo.id}` : undefined });
+  };
+
+  const saveCurrent = () => {
+    if (!editor) return;
+    saveSlot(editor.doc);
+    setEditor((st) => (st ? markSaved(st) : st));
+    toast(`Сценарий «${editor.doc.title}» сохранён в списке.`);
+  };
+
+  const top = (
+    <>
+      <ModeBar mode={mode} onMode={setMode} hasScenario={!!editor} scenarioTitle={editor?.doc.title ?? null} />
+      {restore && !editor && restore.result.ok && (
+        <div className="notice notice-teal" role="status">
+          <div className="small">
+            Найдено автосохранение «{restore.result.doc!.title}» от {restore.savedAt.slice(0, 16).replace('T', ' ')} UTC.{' '}
+            <button className="btn btn-sm" onClick={() => openDoc(restore.result.doc!, 'Сценарий восстановлен из автосохранения.')}>
+              Восстановить
+            </button>{' '}
+            <button className="btn btn-sm btn-ghost" onClick={() => setRestore(null)}>
+              Не сейчас
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  return (
+    <>
+      <div className="visually-hidden" aria-live="polite">
+        {msg}
+      </div>
+      {msg && (
+        <div className="sc-toast" role="status" onClick={() => setMsg('')}>
+          {msg}
+        </div>
+      )}
+      {mode === 'history' ? (
+        <HistoryWorld engine={engine} route={route} navigate={navigate} top={top} onCreateBranch={(d) => setBranchDay(d)} />
+      ) : !editor ? (
+        <main id="main" className="main">
+          {top}
+          <EmptyState title="Сценарий не открыт">
+            <p className="small">Откройте готовый учебный сценарий или создайте ветку от исторической даты.</p>
+            <button className="btn btn-sm" onClick={() => setLibrary(true)}>
+              Выбрать сценарий
+            </button>
+          </EmptyState>
+        </main>
+      ) : (
+        <ScenarioWorkspace
+          engine={engine}
+          editor={editor}
+          setEditor={setEditor}
+          mode={mode}
+          onMode={setMode}
+          onNewDoc={openDoc}
+          onOpenLibrary={() => setLibrary(true)}
+          onSaveSlot={saveCurrent}
+          savedAt={savedAt}
+          setSavedAt={setSavedAt}
+          toast={toast}
+        />
+      )}
+      {branchDay !== null && (
+        <NewBranchDialog
+          day={branchDay}
+          onClose={() => setBranchDay(null)}
+          onCreate={(region, policy) => {
+            const doc = newHistorical({ buildId: engine.data.manifest.buildId, date: isoOf(branchDay), region, policy, today });
+            setBranchDay(null);
+            openDoc(doc, `Создана ветка от ${fmtDay(branchDay)}. Историческая база не изменена.`);
+          }}
+        />
+      )}
+      <Library
+        open={library}
+        onClose={() => {
+          setLibrary(false);
+          if (mode !== 'history' && !editor) navigate('history', {});
+        }}
+        onOpen={(doc, why) => {
+          setLibrary(false);
+          openDoc(doc, why);
+        }}
+        buildId={engine.data.manifest.buildId}
+        today={today}
+        currentId={editor?.doc.id ?? null}
+      />
+    </>
+  );
+}
+
+function NewBranchDialog({ day, onClose, onCreate }: { day: number; onClose: () => void; onCreate: (r: Region, p: HistoryPolicy) => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [region, setRegion] = useState(REGIONS[0].id);
+  const [policy, setPolicy] = useState<HistoryPolicy>('compatible');
+  useEffect(() => {
+    ref.current?.showModal();
+  }, []);
+  return (
+    <dialog ref={ref} className="hdialog" aria-labelledby="nb-h" onClose={onClose} onCancel={onClose}>
+      <div className="hdialog-head">
+        <h2 id="nb-h">Новая ветка от {fmtDay(day)}</h2>
+        <button className="btn btn-sm btn-ghost" onClick={onClose}>
+          Закрыть
+        </button>
+      </div>
+      <div className="hdialog-body">
+        <p className="small">
+          До этой даты ветка совпадает с историей. Сохраняются дата ветвления, версия исторических данных и журнал изменений; исходная история не меняется и остаётся доступной для сравнения.
+        </p>
+        <label className="field small">
+          <span className="field-label">Область карты</span>
+          <select className="select" value={region} onChange={(e) => setRegion(e.target.value)}>
+            {REGIONS.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <fieldset className="sc-set">
+          <legend className="sc-set-title">Исторические события после точки ветвления</legend>
+          <label className="check small">
+            <input type="radio" name="nb-policy" checked={policy === 'compatible'} onChange={() => setPolicy('compatible')} />
+            Продолжать совместимые (с проверкой условий и объяснением пропусков)
+          </label>
+          <label className="check small">
+            <input type="radio" name="nb-policy" checked={policy === 'stop'} onChange={() => setPolicy('stop')} />
+            Остановить все исторические изменения
+          </label>
+        </fieldset>
+        <button className="btn btn-primary" onClick={() => onCreate(REGIONS.find((r) => r.id === region)!, policy)}>
+          Создать ветку и открыть редактор
+        </button>
+      </div>
+    </dialog>
+  );
+}
+
+function Library({ open, onClose, onOpen, buildId, today, currentId }: { open: boolean; onClose: () => void; onOpen: (doc: ScenarioDoc, why: string) => void; buildId: string; today: string; currentId: string | null }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [slots, setSlots] = useState<SlotMeta[]>([]);
+  const [importMsg, setImportMsg] = useState<{ errors: string[]; notes: string[] } | null>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) {
+      d.showModal();
+      setSlots(listSlots());
+      setImportMsg(null);
+    }
+    if (!open && d.open) d.close();
+  }, [open]);
+  const onFile = async (f: File | undefined) => {
+    if (!f) return;
+    const r = parseScenario(await f.text());
+    if (!r.ok) return setImportMsg({ errors: r.errors, notes: [] });
+    setImportMsg({ errors: [], notes: [...r.migrated, ...r.warnings] });
+    onOpen(r.doc!, `Сценарий «${r.doc!.title}» загружен из файла.${r.migrated.length ? ' Выполнена миграция формата.' : ''}`);
+  };
+  return (
+    <dialog ref={ref} className="hdialog" aria-labelledby="lib-h" onClose={onClose} onCancel={onClose}>
+      <div className="hdialog-head">
+        <h2 id="lib-h">Сценарии</h2>
+        <button className="btn btn-sm btn-ghost" onClick={onClose}>
+          Закрыть
+        </button>
+      </div>
+      <div className="hdialog-body">
+        <h3>Новая ветка</h3>
+        <p className="small">
+          От исторической даты: перейдите в режим «Историческое воспроизведение», выберите дату и нажмите «⎇ Создать ветку от этой даты».{' '}
+          <button className="btn btn-sm" onClick={() => onOpen(newTestScene('Новая испытательная сцена'), 'Создана пустая испытательная сцена (вымышленная карта).')}>
+            Пустая испытательная сцена
+          </button>
+        </p>
+        <h3>Готовые учебные сценарии</h3>
+        <p className="xs muted">Боевые параметры вымышлены. Сценарии со взаимодействиями — на вымышленной карте; на исторической карте — ветвление, погода и перелёты.</p>
+        <ul className="sc-lib">
+          {DEMOS.map((d) => (
+            <li key={d.id}>
+              <button className="hresult" onClick={() => onOpen(d.make(today, buildId), `Открыт учебный сценарий «${d.title}».`)}>
+                <span>
+                  <strong>{d.title}</strong>
+                  <span className="xs muted" style={{ display: 'block' }}>
+                    {d.summary}
+                  </span>
+                </span>
+                <span className="xs muted">{d.shows.join(' · ')}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <h3>Сохранённые в этом браузере ({slots.length})</h3>
+        {slots.length === 0 ? (
+          <p className="small muted">Пока пусто. Кнопка «Сохранить» (Ctrl+S) добавляет сценарий сюда; при переходе к другому сценарию текущий сохраняется автоматически.</p>
+        ) : (
+          <ul className="sc-lib">
+            {slots.map((s) => (
+              <li key={s.id} className="sc-lib-row">
+                <button
+                  className="hresult"
+                  onClick={() => {
+                    const r = loadSlot(s.id);
+                    if (r?.ok) onOpen(r.doc!, `Открыт сценарий «${s.title}».`);
+                    else setImportMsg({ errors: r?.errors ?? ['Сохранение не найдено.'], notes: [] });
+                  }}
+                >
+                  <span>
+                    {s.title} {s.id === currentId && <span className="chip">открыт</span>}
+                    <span className="xs muted" style={{ display: 'block' }}>
+                      ⎇ {s.branch} · {s.savedAt.slice(0, 16).replace('T', ' ')} UTC
+                    </span>
+                  </span>
+                </button>
+                <button
+                  className="btn btn-sm btn-ghost"
+                  aria-label={`Удалить «${s.title}» из списка`}
+                  onClick={() => {
+                    if (window.confirm(`Удалить «${s.title}» из списка? Несохранённая в файле ветка будет потеряна.`)) {
+                      deleteSlot(s.id);
+                      setSlots(listSlots());
+                    }
+                  }}
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <h3>Загрузить из файла</h3>
+        <label className="field small">
+          <span className="field-label">Файл .atlas-scenario.json (проверяется по схеме и версии формата)</span>
+          <input type="file" accept=".json,application/json" onChange={(e) => onFile(e.target.files?.[0])} />
+        </label>
+        {importMsg && importMsg.errors.length > 0 && (
+          <div className="notice notice-coral" role="alert">
+            <div className="small">
+              <strong>Файл не открыт.</strong>
+              <ul>
+                {importMsg.errors.map((e) => (
+                  <li key={e}>{e}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+    </dialog>
+  );
 }

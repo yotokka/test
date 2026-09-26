@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { AsideContext, ErrorBoundary, Loading } from './components/Common';
-import { BrandMark, IconBook, IconGlobe, IconLink, IconMenu, IconRadar, IconScale, IconSliders, IconTable } from './components/Icons';
+import { BrandMark, IconBook, IconGlobe, IconLink, IconMenu, IconScale, IconSliders, IconTable } from './components/Icons';
 import { MISSILES } from './data/reference/missiles';
 import { ROUTES, href, useRoute, type RouteName } from './lib/router';
 import { loadJSON, saveJSON } from './lib/storage';
@@ -8,7 +8,6 @@ import { loadJSON, saveJSON } from './lib/storage';
 const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 const ReferencePage = lazy(() => import('./pages/ReferencePage'));
 const ComparePage = lazy(() => import('./pages/ComparePage'));
-const SimulationPage = lazy(() => import('./pages/SimulationPage'));
 const SourcesPage = lazy(() => import('./pages/SourcesPage'));
 const MethodologyPage = lazy(() => import('./pages/MethodologyPage'));
 
@@ -16,7 +15,6 @@ const NAV_ICONS: Record<RouteName, JSX.Element> = {
   history: <IconGlobe />,
   reference: <IconBook />,
   compare: <IconTable />,
-  simulation: <IconRadar />,
   sources: <IconLink />,
   methodology: <IconScale />,
 };
@@ -105,10 +103,9 @@ export function App() {
             ))}
           </ul>
           <div className="nav-foot">
-            <p style={{ margin: '0 0 6px' }}>Исторические факты, справочные сведения и учебная модель хранятся раздельно.</p>
+            <p style={{ margin: '0 0 6px' }}>Исторические факты, справочные сведения, игровые профили и сценарии хранятся раздельно.</p>
             <p style={{ margin: 0 }}>
-              Клавиши в симуляции: <kbd className="mono">Пробел</kbd> — пуск/пауза, <kbd className="mono">→</kbd> — шаг,{' '}
-              <kbd className="mono">R</kbd> — сброс.
+              В редакторе: <kbd className="mono">?</kbd> — список клавиш, <kbd className="mono">Пробел</kbd> — запуск и пауза эпизода.
             </p>
           </div>
         </nav>
@@ -118,7 +115,6 @@ export function App() {
             {route.name === 'history' && <HistoryPage route={route} navigate={navigate} />}
             {route.name === 'reference' && <ReferencePage route={route} navigate={navigate} compare={compare} />}
             {route.name === 'compare' && <ComparePage compare={compare} navigate={navigate} />}
-            {route.name === 'simulation' && <SimulationPage />}
             {route.name === 'sources' && <SourcesPage route={route} navigate={navigate} />}
             {route.name === 'methodology' && <MethodologyPage />}
           </Suspense>

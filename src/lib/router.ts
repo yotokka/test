@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export type RouteName = 'history' | 'reference' | 'compare' | 'simulation' | 'sources' | 'methodology';
+export type RouteName = 'history' | 'reference' | 'compare' | 'sources' | 'methodology';
 
 export const ROUTES: { name: RouteName; label: string }[] = [
-  { name: 'history', label: 'Исторический мир' },
+  { name: 'history', label: 'Мир и сценарии' },
   { name: 'reference', label: 'Справочник' },
   { name: 'compare', label: 'Сравнение' },
-  { name: 'simulation', label: 'Учебная симуляция' },
   { name: 'sources', label: 'Источники' },
   { name: 'methodology', label: 'Методология и ограничения' },
 ];
@@ -19,6 +18,8 @@ export interface Route {
 function parse(hash: string): Route {
   const raw = hash.replace(/^#\/?/, '');
   const [path, query = ''] = raw.split('?');
+  // Прежний раздел «Учебная симуляция» объединён с историческим миром: старые ссылки ведут в редактор
+  if (path === 'simulation') return { name: 'history', params: new URLSearchParams(`mode=edit&scn=demo:legacy-basics`) };
   const name = (ROUTES.find((r) => r.name === path)?.name ?? 'history') as RouteName;
   return { name, params: new URLSearchParams(query) };
 }
