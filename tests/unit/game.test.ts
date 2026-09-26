@@ -282,3 +282,17 @@ describe('журнал объясняет решения', () => {
     }
   });
 });
+
+describe('разделение данных', () => {
+  test('игровой модуль не импортирует справочник и историческую базу, и наоборот', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const read = (dir: string) => fs.readdirSync(dir).filter((f) => /\.tsx?$/.test(f)).map((f) => [f, fs.readFileSync(path.join(dir, f), 'utf8')] as const);
+    for (const [f, src] of read('src/game')) {
+      expect(src, f).not.toMatch(/from\s+['"][^'"]*(data\/reference|\/history\/|\/scenario\/|\/weather\/)/);
+    }
+    for (const [f, src] of [...read('src/data/reference'), ...read('src/history')]) {
+      expect(src, f).not.toMatch(/from\s+['"][^'"]*\/(game|scenario)\//);
+    }
+  });
+});

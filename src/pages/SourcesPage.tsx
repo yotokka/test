@@ -8,6 +8,7 @@ import type { Source } from '../data/reference/types';
 import { formatDateShort, formatPartialDate } from '../lib/format';
 import { href, type Route, type RouteName } from '../lib/router';
 import { HIST_SOURCES } from '../history/sources';
+import { WEATHER_SOURCE } from '../weather/openMeteo';
 
 type Nav = (name: RouteName, params?: Record<string, string | undefined>, replace?: boolean) => void;
 
@@ -182,6 +183,32 @@ export default function SourcesPage({ route, navigate }: { route: Route; navigat
               ))}
             </tbody>
           </table>
+        </div>
+      </section>
+      <section aria-labelledby="wx-src-h" style={{ marginTop: 28 }}>
+        <h2 id="wx-src-h">Погодный контекст сценариев</h2>
+        <div className="figure">
+          <strong>
+            <a href={WEATHER_SOURCE.docs} target="_blank" rel="noopener noreferrer">
+              {WEATHER_SOURCE.title}
+              <span className="visually-hidden"> (откроется в новой вкладке)</span> <IconExternal size={12} />
+            </a>
+          </strong>
+          <p className="small">{WEATHER_SOURCE.models}</p>
+          <p className="small">
+            Условия (
+            <a href={WEATHER_SOURCE.terms} target="_blank" rel="noopener noreferrer">
+              Terms
+            </a>
+            ,{' '}
+            <a href={WEATHER_SOURCE.licence} target="_blank" rel="noopener noreferrer">
+              Licence
+            </a>
+            ): {WEATHER_SOURCE.conditions}
+          </p>
+          <p className="xs muted">
+            {WEATHER_SOURCE.checked} Источник документации: {WEATHER_SOURCE.docsSource}. Ventusky используется только как внешняя ссылка для сравнения: публичного API у него нет, в сценарий его данные не попадают.
+          </p>
         </div>
       </section>
     </>

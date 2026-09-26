@@ -273,3 +273,17 @@ export function phenomenonOf(code: number | null): Phenomenon | null {
   if (code === 45 || code === 48) return 'fog';
   return 'none';
 }
+
+/** Описание источника погоды для раздела «Источники». */
+export const WEATHER_SOURCE = {
+  title: 'Open-Meteo — Historical Weather API и Forecast API',
+  publisher: 'Open-Meteo',
+  docs: 'https://open-meteo.com/en/docs/historical-weather-api',
+  terms: 'https://open-meteo.com/en/terms',
+  licence: 'https://open-meteo.com/en/licence',
+  docsSource: 'https://github.com/open-meteo/open-meteo-website (коммит 5cc7ca6, 24.09.2026)',
+  conditions:
+    'Бесплатный API — только некоммерческое использование; меньше 10 000 вызовов в сутки, 5 000 в час, 600 в минуту; данные — CC BY 4.0 с указанием источника. Коммерческое использование — по платной подписке.',
+  models: 'Архив: ERA5 (0,25° ≈ 25 км, с 1940 г., задержка около 5 дней). Текущая погода: best match (15-минутные данные модели), изобарические уровни 850/700/500/300 гПа.',
+  checked: 'Условия и описание прочитаны из исходного кода сайта в репозитории GitHub; сам сайт и живые ответы API из среды сборки недоступны. Запросы выполняет браузер пользователя.',
+};

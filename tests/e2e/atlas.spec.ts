@@ -109,3 +109,27 @@ test.describe('Телефон', () => {
     expect(overflow).toBeLessThanOrEqual(0);
   });
 });
+
+test.describe('Каталог техники', () => {
+  test('фильтр по категории и историческому периоду; эксплуатант с периодом и источником', async ({ page }) => {
+    await page.goto('/#/reference?tab=equipment');
+    await page.getByLabel('Категория').selectOption('fighter');
+    await page.getByLabel('Этап').selectOption('service');
+    await page.getByLabel('Год').fill('1970');
+    const list = page.locator('.eq-list');
+    await expect(list).toContainText('МиГ-25');
+    await expect(list).not.toContainText('Saab 37 Viggen');
+    await expect(list).not.toContainText('МиГ-21'); // без записи этапа «служба» модификация не проходит фильтр
+    await page.getByLabel('Год').fill('1972');
+    await expect(list).toContainText('Saab 37 Viggen');
+    await list.getByRole('button', { name: /Saab 37 Viggen/ }).click();
+    await openAside(page);
+    const aside = page.getByRole('complementary');
+    await expect(aside).toContainText('1972 г. — 2007 г.');
+    await expect(aside.getByText('Поставлено').locator('xpath=following-sibling::dd[1]')).toHaveText('не установлено');
+    await page.keyboard.press('Escape'); // закрыть выдвижную панель на узком экране
+    await page.goto('/#/reference?tab=equipment');
+    await page.getByRole('tab', { name: 'Таблица покрытия' }).click();
+    await expect(page.getByRole('table').first()).toContainText('Беспилотные аппараты');
+  });
+});

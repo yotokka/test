@@ -8,6 +8,7 @@ import { DEFENSE_CHAIN, DEFENSE_CLASSES, THREAT_DIFFERENCES } from '../data/refe
 import { CATEGORY_NAMES, CATEGORY_SINGULAR, COUNTRY_NAMES, MILESTONES, MILESTONE_RU, MISSILES, PERIOD_NAMES, reachedStage } from '../data/reference/missiles';
 import type { Missile } from '../data/reference/types';
 import { formatPartialDate } from '../lib/format';
+import { EquipmentAside, EquipmentCatalog } from '../components/EquipmentCatalog';
 import type { Route, RouteName } from '../lib/router';
 
 type Nav = (name: RouteName, params?: Record<string, string | undefined>, replace?: boolean) => void;
@@ -15,6 +16,7 @@ type Nav = (name: RouteName, params?: Record<string, string | undefined>, replac
 const TABS = [
   { id: 'missiles', label: 'Ракеты' },
   { id: 'defense', label: 'ПВО: принципы' },
+  { id: 'equipment', label: 'Каталог техники' },
   { id: 'agreements', label: 'Соглашения и союзы' },
 ] as const;
 type Tab = (typeof TABS)[number]['id'];
@@ -64,6 +66,15 @@ export default function ReferencePage({ route, navigate, compare }: { route: Rou
         {tab === 'missiles' && <MissileCatalog selectedId={selectedId} onSelect={select} compare={compare} />}
         {tab === 'defense' && <DefenseGuide />}
         {tab === 'agreements' && <AgreementsList />}
+        {tab === 'equipment' && (
+          <EquipmentCatalog
+            selected={route.params.get('fam')}
+            onSelect={(id) => {
+              navigate('reference', { tab: 'equipment', fam: id }, true);
+              setOpen(true);
+            }}
+          />
+        )}
       </div>
     </>
   );
@@ -82,13 +93,15 @@ export default function ReferencePage({ route, navigate, compare }: { route: Rou
           </div>
         </div>
       )
+    ) : tab === 'equipment' ? (
+      <EquipmentAside id={route.params.get('fam')} />
     ) : tab === 'defense' ? (
       <DefenseAside />
     ) : (
       <AgreementsAside />
     );
 
-  return <Workspace main={main} aside={aside} asideTitle={tab === 'missiles' ? 'Параметры системы' : 'Пояснения'} />;
+  return <Workspace main={main} aside={aside} asideTitle={tab === 'missiles' ? 'Параметры системы' : tab === 'equipment' ? 'Семейство' : 'Пояснения'} />;
 }
 
 /* ———————————————— Каталог ракет ———————————————— */
