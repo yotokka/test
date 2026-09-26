@@ -1,10 +1,11 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { AsideContext, ErrorBoundary, Loading } from './components/Common';
-import { BrandMark, IconBook, IconLink, IconMenu, IconRadar, IconScale, IconSliders, IconTable } from './components/Icons';
+import { BrandMark, IconBook, IconGlobe, IconLink, IconMenu, IconRadar, IconScale, IconSliders, IconTable } from './components/Icons';
 import { MISSILES } from './data/reference/missiles';
 import { ROUTES, href, useRoute, type RouteName } from './lib/router';
 import { loadJSON, saveJSON } from './lib/storage';
 
+const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 const ReferencePage = lazy(() => import('./pages/ReferencePage'));
 const ComparePage = lazy(() => import('./pages/ComparePage'));
 const SimulationPage = lazy(() => import('./pages/SimulationPage'));
@@ -12,6 +13,7 @@ const SourcesPage = lazy(() => import('./pages/SourcesPage'));
 const MethodologyPage = lazy(() => import('./pages/MethodologyPage'));
 
 const NAV_ICONS: Record<RouteName, JSX.Element> = {
+  history: <IconGlobe />,
   reference: <IconBook />,
   compare: <IconTable />,
   simulation: <IconRadar />,
@@ -64,7 +66,7 @@ export function App() {
 
   return (
     <AsideContext.Provider value={asideCtx}>
-      <div className="app">
+      <div className="app" data-route={route.name}>
         <a className="skip-link" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}>
           Перейти к содержимому
         </a>
@@ -93,7 +95,7 @@ export function App() {
               <li key={r.name}>
                 <a className="nav-link" href={href(r.name)} aria-current={route.name === r.name ? 'page' : undefined}>
                   {NAV_ICONS[r.name]}
-                  <span>{r.label}</span>
+                  <span className="nav-label">{r.label}</span>
                   {r.name === 'compare' && compareIds.length > 0 && (
                     <span className="chip chip-mono" aria-label={`выбрано: ${compareIds.length}`}>{compareIds.length}</span>
                   )}
@@ -103,7 +105,7 @@ export function App() {
             ))}
           </ul>
           <div className="nav-foot">
-            <p style={{ margin: '0 0 6px' }}>Справочные сведения и учебная модель хранятся раздельно.</p>
+            <p style={{ margin: '0 0 6px' }}>Исторические факты, справочные сведения и учебная модель хранятся раздельно.</p>
             <p style={{ margin: 0 }}>
               Клавиши в симуляции: <kbd className="mono">Пробел</kbd> — пуск/пауза, <kbd className="mono">→</kbd> — шаг,{' '}
               <kbd className="mono">R</kbd> — сброс.
@@ -113,6 +115,7 @@ export function App() {
 
         <ErrorBoundary key={route.name}>
           <Suspense fallback={<main id="main" className="main"><Loading /></main>}>
+            {route.name === 'history' && <HistoryPage route={route} navigate={navigate} />}
             {route.name === 'reference' && <ReferencePage route={route} navigate={navigate} compare={compare} />}
             {route.name === 'compare' && <ComparePage compare={compare} navigate={navigate} />}
             {route.name === 'simulation' && <SimulationPage />}

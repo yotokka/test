@@ -7,6 +7,7 @@ import { DATASET, SOURCES } from '../data/reference/sources';
 import type { Source } from '../data/reference/types';
 import { formatDateShort, formatPartialDate } from '../lib/format';
 import { href, type Route, type RouteName } from '../lib/router';
+import { HIST_SOURCES } from '../history/sources';
 
 type Nav = (name: RouteName, params?: Record<string, string | undefined>, replace?: boolean) => void;
 
@@ -135,6 +136,54 @@ export default function SourcesPage({ route, navigate }: { route: Route; navigat
           </table>
         </div>
       )}
+      <section aria-labelledby="hist-src-h" style={{ marginTop: 28 }}>
+        <h2 id="hist-src-h">Источники раздела «Исторический мир»</h2>
+        <p className="small muted">
+          Файлы получены из опубликованных авторами пакетов и сверены по контрольным суммам. Дата доступа — когда файл был получен; дата
+          публикации — дата выпуска пакета или материала.
+        </p>
+        <div className="table-wrap">
+          <table className="table table-stack">
+            <thead>
+              <tr>
+                <th scope="col">Набор</th>
+                <th scope="col">Версия</th>
+                <th scope="col">Опубликовано / доступ</th>
+                <th scope="col">Условия</th>
+                <th scope="col">Статус</th>
+              </tr>
+            </thead>
+            <tbody>
+              {HIST_SOURCES.map((s) => (
+                <tr key={s.id}>
+                  <td>
+                    <a href={s.url} target="_blank" rel="noopener noreferrer">
+                      {s.title}
+                      <span className="visually-hidden"> (откроется в новой вкладке)</span> <IconExternal size={12} />
+                    </a>
+                    <div className="xs muted">{s.publisher}</div>
+                    <div className="xs muted">Место подтверждения: {s.locatorHint}</div>
+                  </td>
+                  <td data-label="Версия" className="small">
+                    {s.version}
+                  </td>
+                  <td data-label="Даты" className="small">
+                    {formatPartialDate(s.published)}
+                    <div className="xs muted">доступ: {s.accessed ?? 'не открывался'}</div>
+                  </td>
+                  <td data-label="Условия" className="xs">
+                    {s.license}
+                  </td>
+                  <td data-label="Статус" className="xs">
+                    {s.included ? (s.method === 'dataset-import' ? 'импортирован из документированного набора' : 'требует проверки') : 'не использован'}
+                    <div className="muted">{s.notes}</div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </>
   );
 

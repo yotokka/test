@@ -1,5 +1,5 @@
 import { SEARCH_CHECK } from './sources';
-import type { Check, Missile } from './types';
+import type { Check, Milestone, Missile } from './types';
 
 const chk = (note?: string): Check => (note ? { ...SEARCH_CHECK, note } : SEARCH_CHECK);
 
@@ -787,3 +787,39 @@ export const KIND_NAMES: Record<string, string> = {
   test: 'Результат испытаний',
   estimate: 'Оценка',
 };
+
+const ms = (kind: Milestone['kind'], date: string, sourceId: string, note?: string): Milestone => ({ kind, date, sourceId, check: SEARCH_CHECK, note });
+
+/**
+ * Этапы по тем же источникам, что и карточки. Все сверены только по поисковой выдаче, поэтому
+ * фильтр по году работает с непроверенными датами и так и подписан. Для систем без записи этапа
+ * дата не домысливается.
+ */
+export const MILESTONES: Record<string, Milestone[]> = {
+  v2: [ms('service', '1944', 'nasm-v2', 'боевое применение с сентября 1944 г.')],
+  r17: [ms('service', '1962', 'csis-scud')],
+  minuteman3: [ms('development', '1964', 'csis-mm3'), ms('service', '1970', 'csis-mm3')],
+  pershing2: [ms('service', '1983', 'csis-pershing2', 'первая батарея боеспособна в декабре 1983 г.')],
+  'iskander-m': [ms('service', '2006', 'csis-iskander')],
+  agni5: [ms('test', '2012', 'aca-agni5', 'первый пуск объявлен в 2012 г.')],
+  hwasong15: [ms('test', '2017-11', '38north-hs15', 'пуск в конце ноября 2017 г.')],
+  v1: [ms('service', '1944', 'iwm-v1', 'боевое применение с июня 1944 г.')],
+  kh55: [ms('development', '1971', 'csis-kh55', 'начало разработки')],
+  'tomahawk-iv': [ms('service', '2004', 'navy-tomahawk', 'Block IV поступил во флот')],
+  s75: [ms('service', '1957', 'wiki-s75', 'первое развёртывание')],
+};
+
+export const MILESTONE_RU: Record<Milestone['kind'], string> = {
+  development: 'начало разработки',
+  test: 'испытание',
+  service: 'принятие на вооружение / применение',
+};
+
+const STAGE_RANK = { development: 0, test: 1, service: 2 } as const;
+
+/** Достигла ли модификация этапа (или более позднего) не позднее года. Без записей этапов — нет. */
+export function reachedStage(id: string, stage: Milestone['kind'], year: number): boolean {
+  const list = MILESTONES[id];
+  if (!list) return false;
+  return list.some((x) => STAGE_RANK[x.kind] >= STAGE_RANK[stage] && Number(x.date.slice(0, 4)) <= year);
+}

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { MISSILES } from '../../src/data/reference/missiles';
+import { MILESTONES, MISSILES, reachedStage } from '../../src/data/reference/missiles';
 import { AGREEMENTS } from '../../src/data/reference/agreements';
 import { DATASET, SOURCES } from '../../src/data/reference/sources';
 
@@ -79,5 +79,28 @@ describe('справочная база', () => {
     const cats = new Set(MISSILES.map((m) => m.category));
     expect([...cats].sort()).toEqual(['ballistic', 'cruise', 'sam']);
     expect(new Set(MISSILES.flatMap((m) => m.countries)).size).toBeGreaterThanOrEqual(6);
+  });
+});
+
+describe('этапы систем и фильтр по году', () => {
+  test('разработка, испытание и принятие на вооружение различаются', () => {
+    expect(reachedStage('minuteman3', 'development', 1965)).toBe(true);
+    expect(reachedStage('minuteman3', 'service', 1969)).toBe(false);
+    expect(reachedStage('minuteman3', 'service', 1970)).toBe(true);
+    expect(reachedStage('hwasong15', 'test', 2016)).toBe(false);
+    expect(reachedStage('hwasong15', 'test', 2017)).toBe(true);
+    expect(reachedStage('hwasong15', 'service', 2019)).toBe(false);
+    expect(reachedStage('kh55', 'service', 1990)).toBe(false);
+  });
+  test('более поздняя модификация не считается существовавшей раньше; без записей даты не домысливаются', () => {
+    expect(reachedStage('tomahawk-iv', 'service', 2000)).toBe(false);
+    expect(reachedStage('atacms-1a', 'development', 2020)).toBe(false);
+    for (const [id, list] of Object.entries(MILESTONES)) {
+      expect(MISSILES.some((m) => m.id === id)).toBe(true);
+      for (const x of list) {
+        expect(x.date).toMatch(/^\d{4}(-\d{2})?$/);
+        expect(x.check.method).toBe('search-index');
+      }
+    }
   });
 });

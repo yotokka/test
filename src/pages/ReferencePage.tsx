@@ -5,7 +5,7 @@ import { DatasetNotice, EmptyState, FigureBlock, KindBadge, SourceLink, Workspac
 import { IconBallistic, IconCheck, IconCruise, IconInfo, IconPlus, IconSam, IconSearch, IconWarn } from '../components/Icons';
 import { AGREEMENTS, AGREEMENT_TYPE_NAMES } from '../data/reference/agreements';
 import { DEFENSE_CHAIN, DEFENSE_CLASSES, THREAT_DIFFERENCES } from '../data/reference/airDefense';
-import { CATEGORY_NAMES, CATEGORY_SINGULAR, COUNTRY_NAMES, MISSILES, PERIOD_NAMES } from '../data/reference/missiles';
+import { CATEGORY_NAMES, CATEGORY_SINGULAR, COUNTRY_NAMES, MILESTONES, MILESTONE_RU, MISSILES, PERIOD_NAMES, reachedStage } from '../data/reference/missiles';
 import type { Missile } from '../data/reference/types';
 import { formatPartialDate } from '../lib/format';
 import type { Route, RouteName } from '../lib/router';
@@ -101,6 +101,9 @@ function MissileCatalog({ selectedId, onSelect, compare }: { selectedId?: string
   const [category, setCategory] = useState('all');
   const [period, setPeriod] = useState('all');
   const [data, setData] = useState<DataFilter>('any');
+  const [byYear, setByYear] = useState('');
+  const [stage, setStage] = useState<'service' | 'test' | 'development'>('service');
+  const year = /^\d{4}$/.test(byYear) ? Number(byYear) : null;
   const query = useDeferredValue(q.trim().toLowerCase());
 
   const countries = useMemo(() => [...new Set(MISSILES.flatMap((m) => m.countries))], []);
@@ -112,6 +115,7 @@ function MissileCatalog({ selectedId, onSelect, compare }: { selectedId?: string
         if (category !== 'all' && m.category !== category) return false;
         if (period !== 'all' && m.period !== period) return false;
         if (data === 'none' && m.ranges.length > 0) return false;
+        if (year !== null && !reachedStage(m.id, stage, year)) return false;
         if (data === 'multi' && m.ranges.length < 2) return false;
         if ((data === 'claim' || data === 'test' || data === 'estimate') && !m.ranges.some((r) => r.kind === data)) return false;
         if (!query) return true;
@@ -120,16 +124,17 @@ function MissileCatalog({ selectedId, onSelect, compare }: { selectedId?: string
           .toLowerCase();
         return query.split(/\s+/).every((w) => hay.includes(w));
       }),
-    [query, country, category, period, data],
+    [query, country, category, period, data, year, stage],
   );
 
-  const filtersActive = q || country !== 'all' || category !== 'all' || period !== 'all' || data !== 'any';
+  const filtersActive = q || country !== 'all' || category !== 'all' || period !== 'all' || data !== 'any' || byYear !== '';
   const reset = () => {
     setQ('');
     setCountry('all');
     setCategory('all');
     setPeriod('all');
     setData('any');
+    setByYear('');
   };
 
   return (
@@ -196,6 +201,25 @@ function MissileCatalog({ selectedId, onSelect, compare }: { selectedId?: string
           </select>
         </label>
       </form>
+      <div className="toolbar-year">
+        <label className="field">
+          <span className="field-label">Существовала к году</span>
+          <input className="input mono" inputMode="numeric" maxLength={4} placeholder="например, 1985" value={byYear} onChange={(e) => setByYear(e.target.value.replace(/\D/g, ''))} />
+        </label>
+        <label className="field">
+          <span className="field-label">Этап не позднее этого года</span>
+          <select className="select" value={stage} onChange={(e) => setStage(e.target.value as typeof stage)}>
+            <option value="service">принятие на вооружение / применение</option>
+            <option value="test">хотя бы испытание</option>
+            <option value="development">хотя бы начало разработки</option>
+          </select>
+        </label>
+        <p className="xs muted" style={{ margin: 0, alignSelf: 'end' }}>
+          Даты этапов сверены только по поисковой выдаче (требуют проверки). Системы без записанного этапа при фильтре по году скрываются: дата не
+          домысливается. Более поздняя модификация не считается существовавшей раньше своей даты.
+          {year !== null && ` Без записанных этапов: ${MISSILES.filter((m) => !MILESTONES[m.id]).length}.`}
+        </p>
+      </div>
 
       <div className="toolbar-meta">
         <span role="status" aria-live="polite">
@@ -365,6 +389,19 @@ export function MissileDetail({ m, compare }: { m: Missile; compare?: CompareApi
         ))}
       </p>
 
+      <div className="section-label">Этапы (разработка, испытание, служба)</div>
+      {MILESTONES[m.id] ? (
+        <ul className="plain small">
+          {MILESTONES[m.id].map((x) => (
+            <li key={x.kind + x.date}>
+              <span className="mono">{x.date}</span> — {MILESTONE_RU[x.kind]}
+              {x.note ? ` (${x.note})` : ''} · <SourceLink id={x.sourceId} compact /> <span className="kind kind-none">требует проверки</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="small muted">Даты этапов для этой модификации в справочнике не записаны.</p>
+      )}
       <div className="section-label">Опубликованная дальность</div>
       {m.ranges.length === 0 ? (
         <div className="figure">
@@ -619,3 +656,4 @@ function AgreementsAside() {
     </div>
   );
 }
+

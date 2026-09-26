@@ -103,3 +103,13 @@ export interface Agreement {
   notImplies: string;
   statusNote?: string;
 }
+
+/** Этап жизненного цикла системы. Разработка, испытание и принятие на вооружение — разные даты. */
+export interface Milestone {
+  kind: 'development' | 'test' | 'service';
+  /** Год (YYYY) или месяц (YYYY-MM) — с той точностью, что есть в источнике. */
+  date: string;
+  sourceId: string;
+  check: Check;
+  note?: string;
+}

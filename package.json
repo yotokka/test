@@ -11,23 +11,35 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "build:single": "tsc -b && SINGLE=1 vite build"
+    "build:single": "tsc -b && SINGLE=1 vite build",
+    "data:fetch": "node scripts/data/fetch.mjs && python3 scripts/data/rda_to_json.py",
+    "data:build": "node scripts/data/build-history.mjs",
+    "data:update": "npm run data:fetch && npm run data:build"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/ibm-plex-sans": "^5.3.0",
+    "d3-geo": "^3.1.1",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "topojson-client": "^3.1.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
+    "@types/d3-geo": "^3.1.1",
     "@types/node": "^22.20.4",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
+    "@types/topojson-client": "^3.1.5",
+    "@types/topojson-specification": "^1.0.5",
     "@vitejs/plugin-react": "^5.0.0",
+    "polygon-clipping": "^0.15.7",
+    "topojson-server": "^3.0.1",
+    "topojson-simplify": "^3.0.3",
     "typescript": "^5.9.3",
     "vite": "^7.1.0",
     "vite-plugin-singlefile": "^2.3.3",
-    "vitest": "^5.0.2"
+    "vitest": "^5.0.2",
+    "world-atlas": "^2.0.2"
   }
 }

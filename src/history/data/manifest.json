@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "buildId": "fc758fc534e1",
+  "importedAt": "2026-09-26",
+  "fetchedAt": "2026-09-26",
+  "timeline": {
+    "start": "1970-01-01"
+  },
+  "datasets": {
+    "cshapes-gw": {
+      "name": "CShapes 2.0, вариант Gleditsch & Ward, с зависимыми территориями",
+      "version": "2.0 (R-пакет cshapes 2.0, опубликован на CRAN 2021-06-05)",
+      "file": "inst/extdata/cshapes_2_gw.topojson.xz",
+      "md5": "e6ff39608681467328607490a8bd4bc2",
+      "coverage": {
+        "from": "1970-01-01",
+        "to": "2019-12-31",
+        "note": "Набор покрывает 1886-01-01…2019-12-31; в атлас импортированы записи, действующие с 1970-01-01."
+      },
+      "records": 237,
+      "simplification": {
+        "method": "Visvalingam (topojson-simplify, сферическая площадь)",
+        "quantile": 0.12,
+        "minWeight": 0.000002483879003937553,
+        "protectedPoints": 6924,
+        "fullyProtectedArcs": 7,
+        "quantization": 100000
+      }
+    },
+    "gw-states": {
+      "name": "Список независимых государств Gleditsch & Ward",
+      "version": "R-пакет states 0.3.3",
+      "md5": "d8d720ab76ce382a498e299951bfa5a1",
+      "coverage": {
+        "from": "1970-01-01",
+        "to": "2025-08-25",
+        "note": "Открытые периоды обозначены в наборе как 9999-12-31. Датой последнего подтверждения принята дата публикации пакета (2025-08-25); дата актуализации самих данных в пакете не указана."
+      },
+      "records": 239
+    },
+    "ucdp-acd": {
+      "name": "UCDP Armed Conflict Dataset (подмножество peacesciencer)",
+      "version": "25.1 по описанию набора в peacesciencer 1.2.0; таблица версий того же пакета указывает 20.1 — расхождение внутри пакета; фактический охват по годам — до 2024",
+      "md5": "9664e8c6a815a7a20ae72d3caf8cf69f",
+      "coverage": {
+        "from": "1970-01-01",
+        "to": "2024-12-31",
+        "note": "Единица наблюдения — конфликт-год. Даты начала и окончания эпизодов даны с кодами точности UCDP; их расшифровка не сверена с кодбуком."
+      },
+      "episodes": 504
+    },
+    "archigos": {
+      "name": "Archigos — политические руководители (подмножество peacesciencer)",
+      "version": "4.1 (4.1)",
+      "md5": "20ebc9c07b8519763415bc8234223fe7",
+      "coverage": {
+        "from": "1970-01-01",
+        "to": "2015-12-31",
+        "note": "Дата конца охвата — последняя дата окончания в наборе; «Still in Office» означает «в должности на конец охвата»."
+      },
+      "leaders": 1545
+    },
+    "natural-earth-land": {
+      "name": "Natural Earth 1:110m land (через npm world-atlas 2.0.2)",
+      "version": "Natural Earth 4.1.0; world-atlas 2.0.2 (опубликован в npm 2019-09-05)",
+      "coverage": {
+        "from": null,
+        "to": null,
+        "note": "Современная физическая подложка без политических границ; не является реконструкцией береговой линии прошлых лет."
+      }
+    }
+  },
+  "counts": {
+    "entities": 210,
+    "events": 2447,
+    "disputed": 3,
+    "changeDates": 51
+  }
+}

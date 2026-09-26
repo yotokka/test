@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export type RouteName = 'reference' | 'compare' | 'simulation' | 'sources' | 'methodology';
+export type RouteName = 'history' | 'reference' | 'compare' | 'simulation' | 'sources' | 'methodology';
 
 export const ROUTES: { name: RouteName; label: string }[] = [
+  { name: 'history', label: 'Исторический мир' },
   { name: 'reference', label: 'Справочник' },
   { name: 'compare', label: 'Сравнение' },
   { name: 'simulation', label: 'Учебная симуляция' },
@@ -18,7 +19,7 @@ export interface Route {
 function parse(hash: string): Route {
   const raw = hash.replace(/^#\/?/, '');
   const [path, query = ''] = raw.split('?');
-  const name = (ROUTES.find((r) => r.name === path)?.name ?? 'reference') as RouteName;
+  const name = (ROUTES.find((r) => r.name === path)?.name ?? 'history') as RouteName;
   return { name, params: new URLSearchParams(query) };
 }
 
